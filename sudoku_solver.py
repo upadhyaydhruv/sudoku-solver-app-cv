@@ -59,7 +59,7 @@ def solve():
 #solve()   
 
 
-file_path = "D:\Dhruv\sudoku-solver-test.jpg"
+file_path = "sudoku-solver-test.jpg"
 img = cv.imread(file_path, 0) 
 if img is None:
     sys.exit("Could not read the image.")
@@ -73,5 +73,19 @@ adaptive_threshold = cv.bitwise_not(adaptive_threshold)
 kernel = np.ones((3,3),np.uint8)
 dilated = cv.dilate(adaptive_threshold, kernel, iterations = 1)
 
-cv.imshow("display", dilated)
+cv.imshow('display', dilated)
+k=cv.waitKey(0)
+
+#Finding largest blob (the sudoku square)
+
+cnts = cv.findContours(dilated, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+cnts = sorted(cnts, key=cv.contourArea, reverse=True)
+for c in cnts:
+    # Highlight largest contour
+    cv.drawContours(dilated, [c], -1, (36,35,36), 3)
+    break
+
+cv.imshow('display', dilated)
+#cv2.imshow('image', image)
 k=cv.waitKey(0)
