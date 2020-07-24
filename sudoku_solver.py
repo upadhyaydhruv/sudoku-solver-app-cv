@@ -1,6 +1,7 @@
 import numpy as np
 import cv2 as cv
 import sys
+import imutils
 
 #The code below implements the sudoku solver, assuming it's a nine by nine grid (2 dimensional array - list of lists)
 
@@ -73,8 +74,32 @@ adaptive_threshold = cv.bitwise_not(adaptive_threshold)
 kernel = np.ones((3,3),np.uint8)
 dilated = cv.dilate(adaptive_threshold, kernel, iterations = 1)
 
-cv.imshow('display', dilated)
+cnts = cv.findContours(dilated.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+cnts = imutils.grab_contours(cnts)
+c=max(cnts, key=cv.contourArea)
+
+extLeft = tuple(c[c[:, :, 0].argmin()][0])[0]
+extRight = tuple(c[c[:, :, 0].argmax()][0])[0]
+extTop = tuple(c[c[:, :, 1].argmin()][0])[1]
+extBot = tuple(c[c[:, :, 1].argmax()][0])[1]
+
+#print(extRight)
+
+topLeft = (extLeft, extTop)
+topRight = (extRight, extTop)
+botLeft = (extLeft, extBot)
+botRight = (extRight, extBot)
+
+cv.drawContours(dilated, [c], -1, (0, 255, 255), 2)
+cv.circle(dilated, topLeft, 8, (0, 255, 0), -1)
+cv.circle(dilated, topRight, 8, (0, 255, 0), -1)
+cv.circle(dilated, botLeft, 8, (0, 255, 0), -1)
+cv.circle(dilated, botRight, 8, (0, 255, 0), -1)
+
+cv.imshow('display-contour', img) 
 k=cv.waitKey(0)
+
+'''
 
 gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 retval, thresh_gray = cv2.threshold(gray, thresh=100, maxval=255, type=cv2.THRESH_BINARY_INV)
@@ -105,7 +130,7 @@ k=cv.waitKey(0)
 
 #Finding largest blob (the sudoku square)
 
-'''
+
 cnts = cv.findContours(dilated, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 cnts = cnts[0] if len(cnts) == 2 else cnts[1]
 cnts = sorted(cnts, key=cv.contourArea, reverse=True)
@@ -113,10 +138,10 @@ for c in cnts:
     # Highlight largest contour
     cv.drawContours(dilated, [c], -1, (36,35,36), 3)
     break
-'''
+
 
 #Finding contours on original image
-'''
+
 rand, contours, h = cv.findContours(img.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 contours = sorted(contours, key=cv.contourArea, reverse=True)
 polygon = contours[0]
