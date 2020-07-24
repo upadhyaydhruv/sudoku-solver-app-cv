@@ -76,8 +76,36 @@ dilated = cv.dilate(adaptive_threshold, kernel, iterations = 1)
 cv.imshow('display', dilated)
 k=cv.waitKey(0)
 
+gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+retval, thresh_gray = cv2.threshold(gray, thresh=100, maxval=255, type=cv2.THRESH_BINARY_INV)
+image, contours, hierarchy = cv.findContours(thresh_gray, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
+
+mx = (0,0,0,0)
+mx_area = 0
+
+for cont in contours:
+    x,y,w,h = cv.boundingRect(cont)
+    area = w*h
+    if area>mx_area:
+        mx = x,y,w,h
+        mx_area = area
+x,y,w,h = mx
+
+roi = img[y:y+h, x:x+w]
+
+cv.imwrite('cropped_sudoku.jpg', roi)
+cv2.rectangle(img,(x,y),(x+w,y+h),(200,0,0),2)
+cv2.imwrite('Image_cont.jpg', img)
+ 
+cropped='cropped_sudoku.jpg'
+
+cv.imshow('display', cropped)
+#cv2.imshow('image', image)
+k=cv.waitKey(0)
+
 #Finding largest blob (the sudoku square)
 
+'''
 cnts = cv.findContours(dilated, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 cnts = cnts[0] if len(cnts) == 2 else cnts[1]
 cnts = sorted(cnts, key=cv.contourArea, reverse=True)
@@ -85,7 +113,32 @@ for c in cnts:
     # Highlight largest contour
     cv.drawContours(dilated, [c], -1, (36,35,36), 3)
     break
+'''
 
-cv.imshow('display', dilated)
-#cv2.imshow('image', image)
-k=cv.waitKey(0)
+#Finding contours on original image
+'''
+rand, contours, h = cv.findContours(img.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+contours = sorted(contours, key=cv.contourArea, reverse=True)
+polygon = contours[0]
+
+bottom_right, _ = max(enumerate([pt[0][0] + pt[0][1] for pt in
+                      polygon]), key=operator.itemgetter(1))
+top_left, _ = min(enumerate([pt[0][0] + pt[0][1] for pt in
+                  polygon]), key=operator.itemgetter(1))
+bottom_left, _ = min(enumerate([pt[0][0] - pt[0][1] for pt in
+                     polygon]), key=operator.itemgetter(1))
+top_right, _ = max(enumerate([pt[0][0] - pt[0][1] for pt in
+                   polygon]), key=operator.itemgetter(1))
+
+list_of_points = [polygon[top_left][0], polygon[top_right][0], polygon[bottom_left][0], polygon[bottom_right][0]]
+src = np.array([top_left, top_right, bottom_right, bottom_left], dtype='float32') 
+
+print(list_of_points[0])
+
+
+side = max([  distance_between(bottom_right, top_right), 
+            distance_between(top_left, bottom_left),
+            distance_between(bottom_right, bottom_left),   
+            distance_between(top_left, top_right) ])
+'''
+
