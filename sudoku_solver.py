@@ -57,11 +57,29 @@ def solve():
                 return
     print(np.matrix(grid))
 
-#solve()   
+#solve()  
+
+
+def order_points(pts):
+    # Step 1: Find centre of object
+    center = np.mean(pts)
+
+    # Step 2: Move coordinate system to centre of object
+    shifted = pts - center
+
+    # Step #3: Find angles subtended from centroid to each corner point
+    theta = np.arctan2(shifted[:, 0], shifted[:, 1])
+
+    # Step #4: Return vertices ordered by theta
+    ind = np.argsort(theta)
+    return pts[ind]
 
 
 file_path = "sudoku-solver-test.jpg"
 img = cv.imread(file_path, 0) 
+ratio = img.shape[0] / 300.0
+orig = img.copy()
+img = imutils.resize(img, height=300)
 if img is None:
     sys.exit("Could not read the image.")
 
@@ -74,10 +92,24 @@ adaptive_threshold = cv.bitwise_not(adaptive_threshold)
 kernel = np.ones((3,3),np.uint8)
 dilated = cv.dilate(adaptive_threshold, kernel, iterations = 1)
 
-cnts = cv.findContours(dilated.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+cnts = cv.findContours(dilated.copy(), cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 cnts = imutils.grab_contours(cnts)
 c=max(cnts, key=cv.contourArea)
+cv.drawContours(img, [c], 0, (0, 255, 0), 3)
+cv.imshow('contour', img) 
+k=cv.waitKey(0)
 
+
+#M = cv.getPerspectiveTransform(biggest, dst)
+
+#img_shape = (width, height)
+#warped = cv.warpPerspective(dilated, M, img_shape, flags=cv.INTER_LINEAR)
+
+#cv.imshow('display', warped)
+#k=cv.waitKey(0)
+
+
+'''
 extLeft = tuple(c[c[:, :, 0].argmin()][0])[0]
 extRight = tuple(c[c[:, :, 0].argmax()][0])[0]
 extTop = tuple(c[c[:, :, 1].argmin()][0])[1]
@@ -90,16 +122,50 @@ topRight = (extRight, extTop)
 botLeft = (extLeft, extBot)
 botRight = (extRight, extBot)
 
-cv.drawContours(dilated, [c], -1, (0, 255, 255), 2)
-cv.circle(dilated, topLeft, 8, (0, 255, 0), -1)
-cv.circle(dilated, topRight, 8, (0, 255, 0), -1)
-cv.circle(dilated, botLeft, 8, (0, 255, 0), -1)
-cv.circle(dilated, botRight, 8, (0, 255, 0), -1)
+cv.circle(img, topLeft, 8, (0, 255, 0), -1)
+cv.circle(img, topRight, 8, (0, 255, 0), -1)
+cv.circle(img, botLeft, 8, (0, 255, 0), -1)
+cv.circle(img, botRight, 8, (0, 255, 0), -1)
 
-cv.imshow('display-contour', img) 
+
+#pts = c.reshape(4,2) #Reshaping contours to find four major points (corners)
+pts = c
+rect = np.zeros((4,2), dtype = "float32")
+s = pts.sum(axis=1)
+rect[0] = pts[np.argmin(s)]
+rect[2] = pts[np.argmax(s)]
+diff = np.diff(rect, axis=1)
+rect[1] = pts[np.argmin(diff)]
+rect[3] = pts[np.argmax(diff)]
+
+rect*=ratio
+
+#turn rect into the corners
+(tl, tr, br, bl) = rect
+widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
+widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
+# ...and now for the height of our new image
+heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
+heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
+# take the maximum of the width and height values to reach
+# our final dimensions
+maxWidth = max(int(widthA), int(widthB))
+maxHeight = max(int(heightA), int(heightB))
+# construct our destination points which will be used to
+# map the screen to a top-down, "birds eye" view
+dst = np.array([
+	[0, 0],
+	[maxWidth - 1, 0],
+	[maxWidth - 1, maxHeight - 1],
+	[0, maxHeight - 1]], dtype = "float32")
+M = cv.getPerspectiveTransform(rect, dst)
+warp = cv.warpPerspective(dilated.copy(), M, (maxWidth, maxHeight))
+
+
+cv.imshow('display-contour', warp) 
 k=cv.waitKey(0)
 
-'''
+
 
 gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 retval, thresh_gray = cv2.threshold(gray, thresh=100, maxval=255, type=cv2.THRESH_BINARY_INV)
