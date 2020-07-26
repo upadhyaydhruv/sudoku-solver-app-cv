@@ -76,13 +76,14 @@ def order_points(pts):
     return pts[ind]
 
 
-file_path = "D:\Dhruv\sudoku-solver-test2.jpg"
+file_path = "sudoku-solver-test.jpg"
 img = cv.imread(file_path, 0) 
 cv.imshow('display', img)
 k=cv.waitKey(0)
 #ratio = img.shape[0] / 300.0
-orig = img.copy()
+
 img = imutils.resize(img, height=300)
+orig = img.copy()
 if img is None:
     sys.exit("Could not read the image.")
 
@@ -99,7 +100,9 @@ eroded = cv.erode(adaptive_threshold, kernel)
 cnts = cv.findContours(dilated, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 cnts = imutils.grab_contours(cnts)
 c=max(cnts, key=cv.contourArea)
-#cv.drawContours(img, [c], 0, (0, 255, 0), 3)
+cv.drawContours(img, [c], 0, (0, 255, 0), 3)
+cv.imshow('display', img)
+k=cv.waitKey(0)
 
 
 #Finding extreme four points on a contour
@@ -112,7 +115,7 @@ tl = np.array([0, 0])
 br = np.array([0, 0])
 bl = np.array([0, 0])
 
-for i in range(116):
+for i in range(len(c)):
     if np.sum(c[i])>maxSum:
         maxSum = np.sum(c[i])
         br = c[i][0]
@@ -131,10 +134,40 @@ tr = (tr[0], tr[1])
 bl = (bl[0], bl[1])
 br = (br[0], br[1])
 
-#cv.circle(img, tl, 8, (0, 255, 0), -1)
-#cv.circle(img, tr, 8, (0, 255, 0), -1)
-#cv.circle(img, bl, 8, (0, 255, 0), -1)
-#cv.circle(img, br, 8, (0, 255, 0), -1)  
+cv.circle(orig, tl, 8, (0, 255, 0), -1)
+cv.circle(orig, tr, 8, (0, 255, 0), -1)
+cv.circle(orig, bl, 8, (0, 255, 0), -1)
+cv.circle(orig, br, 8, (0, 255, 0), -1)  
 
-cv.imshow('contour', img) 
+
+cv.imshow('display', orig)
+k=cv.waitKey(0)
+#Function to transform the four points:
+
+def four_point_transform(image, tl, tr, br, bl):
+    rect = (tl, tr, br, bl)
+    rect = np.float32(rect)
+    widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
+    widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
+
+    maxWidth = max(int(widthA), int(widthB))
+
+    heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
+    heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
+    maxHeight = max(int(heightA), int(heightB))
+
+    dst = np.array([
+    [0, 0],
+    [maxWidth - 1, 0],
+    [maxWidth - 1, maxHeight - 1],
+    [0, maxHeight - 1]], dtype = "float32")
+
+    M = cv.getPerspectiveTransform(rect, dst)
+    warped = cv.warpPerspective(image, M, (maxWidth, maxHeight))
+    
+    return warped
+
+warp_pic = four_point_transform(dilated, tl, tr, br, bl)
+
+cv.imshow('display', warp_pic)
 k=cv.waitKey(0)
