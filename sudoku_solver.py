@@ -2,6 +2,7 @@ import numpy as np
 import cv2 as cv
 import sys
 import imutils
+import math
 
 #The code below implements the sudoku solver, assuming it's a nine by nine grid (2 dimensional array - list of lists)
 
@@ -75,9 +76,11 @@ def order_points(pts):
     return pts[ind]
 
 
-file_path = "sudoku-solver-test.jpg"
+file_path = "D:\Dhruv\sudoku-solver-test2.jpg"
 img = cv.imread(file_path, 0) 
-ratio = img.shape[0] / 300.0
+cv.imshow('display', img)
+k=cv.waitKey(0)
+#ratio = img.shape[0] / 300.0
 orig = img.copy()
 img = imutils.resize(img, height=300)
 if img is None:
@@ -89,147 +92,49 @@ adaptive_threshold = cv.adaptiveThreshold(gauss_blurred, 255, cv.ADAPTIVE_THRESH
 
 adaptive_threshold = cv.bitwise_not(adaptive_threshold)
 
-kernel = np.ones((3,3),np.uint8)
+kernel = np.ones((2,2),np.uint8)
 dilated = cv.dilate(adaptive_threshold, kernel, iterations = 1)
+eroded = cv.erode(adaptive_threshold, kernel)
 
-cnts = cv.findContours(dilated.copy(), cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+cnts = cv.findContours(dilated, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 cnts = imutils.grab_contours(cnts)
 c=max(cnts, key=cv.contourArea)
-cv.drawContours(img, [c], 0, (0, 255, 0), 3)
+#cv.drawContours(img, [c], 0, (0, 255, 0), 3)
+
+
+#Finding extreme four points on a contour
+maxSum = 0
+minSum = 1000
+maxDiff = -1000
+minDiff = 1000
+tr = np.array([0, 0])
+tl = np.array([0, 0])
+br = np.array([0, 0])
+bl = np.array([0, 0])
+
+for i in range(116):
+    if np.sum(c[i])>maxSum:
+        maxSum = np.sum(c[i])
+        br = c[i][0]
+    if np.sum(c[i])<minSum:
+        minSum = np.sum(c[i])
+        tl = c[i][0]
+    if abs(np.diff(c[i]))>maxDiff:
+        maxDiff = np.diff(c[i])
+        bl = c[i][0]
+    if abs(np.diff(c[i]))<maxDiff:
+        minDiff = np.diff(c[i])
+        tr = c[i][0]
+
+tl = (tl[0], tl[1])
+tr = (tr[0], tr[1])
+bl = (bl[0], bl[1])
+br = (br[0], br[1])
+
+#cv.circle(img, tl, 8, (0, 255, 0), -1)
+#cv.circle(img, tr, 8, (0, 255, 0), -1)
+#cv.circle(img, bl, 8, (0, 255, 0), -1)
+#cv.circle(img, br, 8, (0, 255, 0), -1)  
+
 cv.imshow('contour', img) 
 k=cv.waitKey(0)
-
-
-#M = cv.getPerspectiveTransform(biggest, dst)
-
-#img_shape = (width, height)
-#warped = cv.warpPerspective(dilated, M, img_shape, flags=cv.INTER_LINEAR)
-
-#cv.imshow('display', warped)
-#k=cv.waitKey(0)
-
-
-'''
-extLeft = tuple(c[c[:, :, 0].argmin()][0])[0]
-extRight = tuple(c[c[:, :, 0].argmax()][0])[0]
-extTop = tuple(c[c[:, :, 1].argmin()][0])[1]
-extBot = tuple(c[c[:, :, 1].argmax()][0])[1]
-
-#print(extRight)
-
-topLeft = (extLeft, extTop)
-topRight = (extRight, extTop)
-botLeft = (extLeft, extBot)
-botRight = (extRight, extBot)
-
-cv.circle(img, topLeft, 8, (0, 255, 0), -1)
-cv.circle(img, topRight, 8, (0, 255, 0), -1)
-cv.circle(img, botLeft, 8, (0, 255, 0), -1)
-cv.circle(img, botRight, 8, (0, 255, 0), -1)
-
-
-#pts = c.reshape(4,2) #Reshaping contours to find four major points (corners)
-pts = c
-rect = np.zeros((4,2), dtype = "float32")
-s = pts.sum(axis=1)
-rect[0] = pts[np.argmin(s)]
-rect[2] = pts[np.argmax(s)]
-diff = np.diff(rect, axis=1)
-rect[1] = pts[np.argmin(diff)]
-rect[3] = pts[np.argmax(diff)]
-
-rect*=ratio
-
-#turn rect into the corners
-(tl, tr, br, bl) = rect
-widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
-widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
-# ...and now for the height of our new image
-heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
-heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
-# take the maximum of the width and height values to reach
-# our final dimensions
-maxWidth = max(int(widthA), int(widthB))
-maxHeight = max(int(heightA), int(heightB))
-# construct our destination points which will be used to
-# map the screen to a top-down, "birds eye" view
-dst = np.array([
-	[0, 0],
-	[maxWidth - 1, 0],
-	[maxWidth - 1, maxHeight - 1],
-	[0, maxHeight - 1]], dtype = "float32")
-M = cv.getPerspectiveTransform(rect, dst)
-warp = cv.warpPerspective(dilated.copy(), M, (maxWidth, maxHeight))
-
-
-cv.imshow('display-contour', warp) 
-k=cv.waitKey(0)
-
-
-
-gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-retval, thresh_gray = cv2.threshold(gray, thresh=100, maxval=255, type=cv2.THRESH_BINARY_INV)
-image, contours, hierarchy = cv.findContours(thresh_gray, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
-
-mx = (0,0,0,0)
-mx_area = 0
-
-for cont in contours:
-    x,y,w,h = cv.boundingRect(cont)
-    area = w*h
-    if area>mx_area:
-        mx = x,y,w,h
-        mx_area = area
-x,y,w,h = mx
-
-roi = img[y:y+h, x:x+w]
-
-cv.imwrite('cropped_sudoku.jpg', roi)
-cv2.rectangle(img,(x,y),(x+w,y+h),(200,0,0),2)
-cv2.imwrite('Image_cont.jpg', img)
- 
-cropped='cropped_sudoku.jpg'
-
-cv.imshow('display', cropped)
-#cv2.imshow('image', image)
-k=cv.waitKey(0)
-
-#Finding largest blob (the sudoku square)
-
-
-cnts = cv.findContours(dilated, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-cnts = sorted(cnts, key=cv.contourArea, reverse=True)
-for c in cnts:
-    # Highlight largest contour
-    cv.drawContours(dilated, [c], -1, (36,35,36), 3)
-    break
-
-
-#Finding contours on original image
-
-rand, contours, h = cv.findContours(img.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-contours = sorted(contours, key=cv.contourArea, reverse=True)
-polygon = contours[0]
-
-bottom_right, _ = max(enumerate([pt[0][0] + pt[0][1] for pt in
-                      polygon]), key=operator.itemgetter(1))
-top_left, _ = min(enumerate([pt[0][0] + pt[0][1] for pt in
-                  polygon]), key=operator.itemgetter(1))
-bottom_left, _ = min(enumerate([pt[0][0] - pt[0][1] for pt in
-                     polygon]), key=operator.itemgetter(1))
-top_right, _ = max(enumerate([pt[0][0] - pt[0][1] for pt in
-                   polygon]), key=operator.itemgetter(1))
-
-list_of_points = [polygon[top_left][0], polygon[top_right][0], polygon[bottom_left][0], polygon[bottom_right][0]]
-src = np.array([top_left, top_right, bottom_right, bottom_left], dtype='float32') 
-
-print(list_of_points[0])
-
-
-side = max([  distance_between(bottom_right, top_right), 
-            distance_between(top_left, bottom_left),
-            distance_between(bottom_right, bottom_left),   
-            distance_between(top_left, top_right) ])
-'''
-
