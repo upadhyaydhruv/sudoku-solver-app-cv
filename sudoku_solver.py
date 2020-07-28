@@ -60,30 +60,15 @@ def solve():
 
 #solve()  
 
-
-def order_points(pts):
-    # Step 1: Find centre of object
-    center = np.mean(pts)
-
-    # Step 2: Move coordinate system to centre of object
-    shifted = pts - center
-
-    # Step #3: Find angles subtended from centroid to each corner point
-    theta = np.arctan2(shifted[:, 0], shifted[:, 1])
-
-    # Step #4: Return vertices ordered by theta
-    ind = np.argsort(theta)
-    return pts[ind]
-
-
-file_path = "sudoku-solver-test.jpg"
+file_path = "D:/Dhruv/SUDOKU-SOLVER/sudoku-solver-app-cv/sudoku-solver-test.jpg"
 img = cv.imread(file_path, 0) 
 cv.imshow('display', img)
 k=cv.waitKey(0)
 #ratio = img.shape[0] / 300.0
 
-img = imutils.resize(img, height=300)
+#img = imutils.resize(img, height=300)
 orig = img.copy()
+orig2 = orig.copy()
 if img is None:
     sys.exit("Could not read the image.")
 
@@ -141,7 +126,6 @@ cv.circle(orig, br, 8, (0, 255, 0), -1)
 
 
 cv.imshow('display', orig)
-k=cv.waitKey(0)
 #Function to transform the four points:
 
 def four_point_transform(image, tl, tr, br, bl):
@@ -167,7 +151,40 @@ def four_point_transform(image, tl, tr, br, bl):
     
     return warped
 
-warp_pic = four_point_transform(dilated, tl, tr, br, bl)
+warp_pic = four_point_transform(orig2, tl, tr, br, bl)
 
-cv.imshow('display', warp_pic)
+final_grid = cv.GaussianBlur(warp_pic, (5,5), cv.BORDER_DEFAULT) #Applying Gaussian blur on image to get rid of unnecessary noise 
+
+final_grid = cv.adaptiveThreshold(final_grid, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 3)
+
+final_grid = cv.bitwise_not(final_grid)
+
+height = final_grid.shape[0]
+width = final_grid.shape[1]
+
+height_const = int(height/9)
+width_const = int(width/9)
+
+image_list = []
+
+for i in range(1, height+height_const, height_const):
+    for j in range(5, width+width_const, width_const):
+        image_list.append(final_grid[i:i+height_const, j:j+width_const])
+
+cv.imshow('display', image_list[20])
 k=cv.waitKey(0)
+
+
+for i in image_list:
+    cnts = cv.findContours(i, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    cnts = imutils.grab_contours(cnts)
+    c = max(cnts, key=cv.contourArea)
+    cv.drawContours(i, [c], 0, (0, 255, 0), 3)
+
+for i in range(len(image_list)):
+    if image_list[i].shape[0]>0 and image_list[i].shape[1]>0 and i!=0:
+        cv.imshow('display', image_list[i])
+        k=cv.waitKey(0)
+        
+
+cv.destroyAllWindows()
